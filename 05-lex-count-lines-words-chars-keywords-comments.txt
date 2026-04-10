@@ -1,0 +1,38 @@
+LEX Program 1: Count lines, words, chars, C keywords, comment lines
+
+Code (count_all.l):
+%{
+#include <stdio.h>
+int lines=0, words=0, chars=0, keys=0, comments=0;
+%}
+%%
+"//".*                          { comments++; chars += yyleng; }
+"/\\*"([^*]|\\*+[^*/])*"\\*/"  { comments++; chars += yyleng; }
+"int"|"char"|"float"|"double"|"if"|"else"|"for"|"while"|"return" { keys++; words++; chars += yyleng; }
+[a-zA-Z_][a-zA-Z0-9_]*          { words++; chars += yyleng; }
+[0-9]+                          { words++; chars += yyleng; }
+\n                              { lines++; chars++; }
+[ \t]+                          { chars += yyleng; }
+.                               { chars += yyleng; }
+%%
+int yywrap(){ return 1; }
+int main(){
+    yylex();
+    printf("Lines=%d\nWords=%d\nChars=%d\nKeywords=%d\nComment lines=%d\n", lines, words, chars, keys, comments);
+    return 0;
+}
+
+Example input:
+int a=10; // one comment
+float b=2;
+
+Linux:
+flex count_all.l
+gcc lex.yy.c -o count_all -lfl
+./count_all < input.c
+
+Windows:
+win_flex count_all.l
+gcc lex.yy.c -o count_all.exe
+count_all.exe < input.c
+

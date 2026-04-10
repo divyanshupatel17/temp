@@ -1,0 +1,44 @@
+C Program 3: Construction of LALR Parser for Given Grammar (Shift-Reduce Demo)
+
+Code (lalr_demo.c):
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+    char input[100], stack[100] = "";
+    int i = 0, top = -1;
+    printf("Grammar: E->E+E | E*E | (E) | id\n");
+    printf("Enter input using i for id (example: i+i*i): ");
+    scanf("%s", input);
+
+    while (input[i]) {
+        stack[++top] = input[i++];
+        stack[top + 1] = '\0';
+
+        if (stack[top] == 'i') stack[top] = 'E';
+        if (top >= 2 && stack[top - 2] == 'E' && (stack[top - 1] == '+' || stack[top - 1] == '*') && stack[top] == 'E') {
+            top -= 2;
+            stack[top] = 'E';
+        }
+        if (top >= 2 && stack[top - 2] == '(' && stack[top - 1] == 'E' && stack[top] == ')') {
+            top -= 2;
+            stack[top] = 'E';
+        }
+    }
+
+    if (top == 0 && stack[0] == 'E') printf("String Accepted\n");
+    else printf("String Rejected\n");
+    return 0;
+}
+
+Example input:
+i+i*i
+
+Linux:
+gcc lalr_demo.c -o lalr_demo
+./lalr_demo
+
+Windows:
+gcc lalr_demo.c -o lalr_demo.exe
+lalr_demo.exe
+

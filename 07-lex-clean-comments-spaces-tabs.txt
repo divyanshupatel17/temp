@@ -1,0 +1,33 @@
+LEX Program 3: Remove single/multi comments and extra spaces/tabs, print clean C code
+
+Code (clean_c.l):
+%{
+#include <stdio.h>
+int sp = 0;
+%}
+%%
+"//".*                          ;
+"/\\*"([^*]|\\*+[^*/])*"\\*/"  ;
+[ \t]+                          { if(!sp){ putchar(' '); sp=1; } }
+\n                              { putchar('\n'); sp=0; }
+[^ \t\n/]+                      { printf("%s", yytext); sp=0; }
+"/"                             { putchar('/'); sp=0; }
+%%
+int yywrap(){ return 1; }
+int main(){ yylex(); return 0; }
+
+Example input:
+int   a = 10;   // comment
+/* block */
+float    b = 2;
+
+Linux:
+flex clean_c.l
+gcc lex.yy.c -o clean_c -lfl
+./clean_c < input.c
+
+Windows:
+win_flex clean_c.l
+gcc lex.yy.c -o clean_c.exe
+clean_c.exe < input.c
+

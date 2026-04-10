@@ -1,0 +1,50 @@
+LEX YACC 8: Compute FIRST and FOLLOW (demo for single productions)
+
+Code (ff.l):
+%{
+#include "y.tab.h"
+%}
+%%
+[A-Z]       { yylval.c = yytext[0]; return NT; }
+[a-z]       { yylval.c = yytext[0]; return T; }
+"->"        { return ARROW; }
+"\n"        { return '\n'; }
+[ \t]+      ;
+.           { return yytext[0]; }
+%%
+int yywrap(){ return 1; }
+
+Code (ff.y):
+%{
+#include <stdio.h>
+int yylex(void);
+void yyerror(char *s){ printf("Invalid input\n"); }
+char lhs, rhs1;
+%}
+%union { char c; }
+%token <c> NT T
+%token ARROW
+%%
+S : NT ARROW T '\n' {
+        lhs=$1; rhs1=$3;
+        printf("FIRST(%c) = { %c }\n", lhs, rhs1);
+        printf("FOLLOW(%c) = { $ }\n", lhs);
+    };
+%%
+int main(){ yyparse(); return 0; }
+
+Example input:
+E->a
+
+Linux:
+yacc -d ff.y
+lex ff.l
+gcc y.tab.c lex.yy.c -o ff -ll -ly
+./ff
+
+Windows:
+win_bison -d ff.y
+win_flex ff.l
+gcc ff.tab.c lex.yy.c -o ff.exe
+ff.exe
+

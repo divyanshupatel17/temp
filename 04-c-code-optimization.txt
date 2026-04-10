@@ -1,0 +1,28 @@
+C Program 4: Implementation of Code Optimization Techniques
+
+Code (opt.c):
+#include <stdio.h>
+
+int main() {
+    int a = 5, b = 10;
+    int x1 = a + b;         // normal
+    int x2 = 5 + 10;        // constant folding
+    int x3 = a * 8;         // strength reduction possible => a<<3
+
+    printf("Normal: x1 = %d\n", x1);
+    printf("Constant folded: x2 = %d\n", x2);
+    printf("Strength reduction idea: a*8 = %d (same as a<<3)\n", x3);
+    return 0;
+}
+
+Example input:
+No input required
+
+Linux:
+gcc opt.c -o opt
+./opt
+
+Windows:
+gcc opt.c -o opt.exe
+opt.exe
+

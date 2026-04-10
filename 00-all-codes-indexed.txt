@@ -1,0 +1,532 @@
+ALL COMPILER LAB CODES (Concise, student-style)
+
+INDEX
+1. C - Token Separation
+2. C - Symbol Table (name,type,size,address)
+3. C - Shift-Reduce (LALR-style demo)
+4. C - Code Optimization Techniques
+5. LEX - Count lines/words/chars/keywords/comments
+6. LEX - Classify identifiers, int/real, operators, separators
+7. LEX - Remove comments + extra spaces/tabs
+8. LEX+YACC - Calculator with precedence
+9. LEX+YACC - Assignment syntax checker
+10. LEX+YACC - Infix to Postfix
+11. LEX+YACC - Variable declaration + redeclaration detection
+12. LEX+YACC - Mini C syntax checker
+13. LEX+YACC - Parse tree (prefix form)
+14. LEX+YACC - LL(1) grammar format validator
+15. LEX+YACC - FIRST/FOLLOW (basic demo)
+16. LEX+YACC - Three Address Code generation
+
+==================================================
+1) C - Token Separation
+==================================================
+// token_sep.c
+#include <stdio.h>
+#include <ctype.h>
+int main(){
+  char s[500]; int i=0;
+  fgets(s,sizeof(s),stdin);
+  while(s[i]){
+    if(isspace((unsigned char)s[i])){ i++; continue; }
+    if(isalpha((unsigned char)s[i])||s[i]=='_'){
+      printf("ID: "); while(isalnum((unsigned char)s[i])||s[i]=='_') putchar(s[i++]); puts("");
+    }else if(isdigit((unsigned char)s[i])){
+      printf("NUM: "); while(isdigit((unsigned char)s[i])) putchar(s[i++]); puts("");
+    }else printf("SYM: %c\n", s[i++]);
+  } return 0;
+}
+Input:  sum=a1+25*b;
+Output (short):
+ID: sum
+SYM: =
+ID: a1
+SYM: +
+NUM: 25
+SYM: *
+ID: b
+SYM: ;
+Linux:   gcc token_sep.c -o token_sep && ./token_sep
+Windows: gcc token_sep.c -o token_sep.exe && token_sep.exe
+
+==================================================
+2) C - Symbol Table
+==================================================
+// symtab.c
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+struct Sym{ char n[40], t[10]; int s, a; } st[200];
+int cnt=0, addr=1000;
+int sz(char *t){ if(!strcmp(t,"char"))return 1; if(!strcmp(t,"double"))return 8; return 4; }
+int kw(char *x){ char *k[]={"int","float","double","char","if","else","for","while","return","void","main"}; for(int i=0;i<11;i++) if(!strcmp(x,k[i])) return 1; return 0; }
+void add(char *n,char *t){ for(int i=0;i<cnt;i++) if(!strcmp(st[i].n,n)) return; strcpy(st[cnt].n,n); strcpy(st[cnt].t,t); st[cnt].s=sz(t); st[cnt].a=addr; addr+=st[cnt].s; cnt++; }
+int main(){
+  int L; char line[400], cur[10]=""; scanf("%d",&L); getchar();
+  for(int z=0;z<L;z++){ fgets(line,sizeof(line),stdin); int i=0;
+    while(line[i]){
+      if(isalpha((unsigned char)line[i])||line[i]=='_'){
+        char tok[50]; int j=0; while(isalnum((unsigned char)line[i])||line[i]=='_') tok[j++]=line[i++]; tok[j]='\0';
+        if(!strcmp(tok,"int")||!strcmp(tok,"float")||!strcmp(tok,"double")||!strcmp(tok,"char")) strcpy(cur,tok);
+        else if(cur[0] && !kw(tok)) add(tok,cur);
+      } else { if(line[i]==';') cur[0]='\0'; i++; }
+    }
+  }
+  puts("Name\tType\tSize\tAddress");
+  for(int i=0;i<cnt;i++) printf("%s\t%s\t%d\t%d\n",st[i].n,st[i].t,st[i].s,st[i].a);
+  return 0;
+}
+Input:
+5
+int a,b;
+float x;
+char c;
+double d;
+int sum;
+Output (short):
+Name Type Size Address
+a int 4 1000
+b int 4 1004
+x float 4 1008
+c char 1 1012
+d double 8 1013
+sum int 4 1021
+Linux:   gcc symtab.c -o symtab && ./symtab
+Windows: gcc symtab.c -o symtab.exe && symtab.exe
+
+==================================================
+3) C - Shift-Reduce (LALR-style demo)
+==================================================
+// sr.c
+#include <stdio.h>
+int main(){
+  char in[100], st[100]=""; int i=0,t=-1;
+  scanf("%s",in); // use i for id
+  while(in[i]){
+    st[++t]=in[i++]; st[t+1]='\0';
+    if(st[t]=='i') st[t]='E';
+    if(t>=2 && st[t-2]=='E' && (st[t-1]=='+'||st[t-1]=='*') && st[t]=='E'){ t-=2; st[t]='E'; }
+    if(t>=2 && st[t-2]=='(' && st[t-1]=='E' && st[t]==')'){ t-=2; st[t]='E'; }
+  }
+  puts((t==0 && st[0]=='E')?"Accepted":"Rejected");
+  return 0;
+}
+Input:  i+i*i
+Output: Accepted
+Linux:   gcc sr.c -o sr && ./sr
+Windows: gcc sr.c -o sr.exe && sr.exe
+
+==================================================
+4) C - Code Optimization Techniques
+==================================================
+// opt.c
+#include <stdio.h>
+int main(){
+  int a=5,b=10;
+  int normal=a+b;
+  int folded=5+10;
+  int strength=a*8;
+  printf("normal=%d\nfolded=%d\nstrength(a*8)=%d\n",normal,folded,strength);
+  return 0;
+}
+Input: No input
+Output: normal=15, folded=15, strength(a*8)=40
+Linux:   gcc opt.c -o opt && ./opt
+Windows: gcc opt.c -o opt.exe && opt.exe
+
+==================================================
+5) LEX - Count lines/words/chars/keywords/comments
+==================================================
+// count.l
+%{
+#include <stdio.h>
+int ln=0,wd=0,ch=0,kw=0,cm=0;
+%}
+%%
+"//".*                          { cm++; ch+=yyleng; }
+"/\\*"([^*]|\\*+[^*/])*"\\*/"  { cm++; ch+=yyleng; }
+"int"|"float"|"char"|"double"|"if"|"else"|"for"|"while"|"return" { kw++; wd++; ch+=yyleng; }
+[a-zA-Z_][a-zA-Z0-9_]*          { wd++; ch+=yyleng; }
+[0-9]+                          { wd++; ch+=yyleng; }
+\n                              { ln++; ch++; }
+[ \t]+                          { ch+=yyleng; }
+.                               { ch+=yyleng; }
+%%
+int yywrap(){ return 1; }
+int main(){ yylex(); printf("Lines=%d Words=%d Chars=%d Keywords=%d Comments=%d\n",ln,wd,ch,kw,cm); return 0; }
+Input:
+int a=10; // c1
+float b=2;
+Output (short): Lines=2 Words=5 Keywords=2 Comments=1
+Linux:   flex count.l && gcc lex.yy.c -o count -lfl && ./count < input.c
+Windows: win_flex count.l && gcc lex.yy.c -o count.exe && count.exe < input.c
+
+==================================================
+6) LEX - Classifier
+==================================================
+// classify.l
+%{
+#include <stdio.h>
+%}
+%%
+[a-zA-Z_][a-zA-Z0-9_]*  { printf("ID %s\n",yytext); }
+[0-9]+"."[0-9]+         { printf("REAL %s\n",yytext); }
+[0-9]+                  { printf("INT %s\n",yytext); }
+"=="|"!="|"<="|">="|"+"|"-"|"*"|"/"|"="|"<"|">" { printf("OP %s\n",yytext); }
+[(){};,]                { printf("SEP %s\n",yytext); }
+[ \t\n]+                ;
+.                       { printf("UNK %s\n",yytext); }
+%%
+int yywrap(){ return 1; }
+int main(){ yylex(); return 0; }
+Input:  x=10+20.5;
+Output: ID x, OP =, INT 10, OP +, REAL 20.5, SEP ;
+Linux:   flex classify.l && gcc lex.yy.c -o classify -lfl && ./classify < input.txt
+Windows: win_flex classify.l && gcc lex.yy.c -o classify.exe && classify.exe < input.txt
+
+==================================================
+7) LEX - Remove comments/spaces/tabs
+==================================================
+// clean.l
+%{
+#include <stdio.h>
+int sp=0;
+%}
+%%
+"//".*                          ;
+"/\\*"([^*]|\\*+[^*/])*"\\*/"  ;
+[ \t]+                          { if(!sp){ putchar(' '); sp=1; } }
+\n                              { putchar('\n'); sp=0; }
+[^ \t\n/]+                      { printf("%s",yytext); sp=0; }
+"/"                             { putchar('/'); sp=0; }
+%%
+int yywrap(){ return 1; }
+int main(){ yylex(); return 0; }
+Input:
+int   a = 10; // c
+/* b */ float    b = 2;
+Output:
+int a = 10;
+float b = 2;
+Linux:   flex clean.l && gcc lex.yy.c -o clean -lfl && ./clean < input.c
+Windows: win_flex clean.l && gcc lex.yy.c -o clean.exe && clean.exe < input.c
+
+==================================================
+8) LEX+YACC - Calculator (precedence)
+==================================================
+// calc.l
+%{
+#include <stdlib.h>
+#include "calc.tab.h"
+%}
+%%
+[0-9]+ { yylval=atoi(yytext); return NUM; }
+[ \t]  ;
+\n      return '\n';
+.       return yytext[0];
+%%
+int yywrap(){ return 1; }
+// calc.y
+%{
+#include <stdio.h>
+int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
+%}
+%token NUM
+%left '+' '-'
+%left '*' '/'
+%%
+S: E '\n' { printf("Result=%d\n",$1); };
+E: E'+'E {$$=$1+$3;} | E'-'E {$$=$1-$3;} | E'*'E {$$=$1*$3;} | E'/'E {$$=$1/$3;} | '('E')' {$$=$2;} | NUM {$$=$1;};
+%%
+int main(){ return yyparse(); }
+Input: 10+2*5
+Output: Result=20
+Linux:   bison -d calc.y -o calc.tab.c && flex -o calc.lex.c calc.l && gcc calc.tab.c calc.lex.c -o calc -lfl && ./calc
+Windows: win_bison -d calc.y -o calc.tab.c && win_flex -o calc.lex.c calc.l && gcc calc.tab.c calc.lex.c -o calc.exe && calc.exe
+
+==================================================
+9) LEX+YACC - Assignment syntax checker
+==================================================
+// assign.l
+%{ #include "assign.tab.h" %}
+%%
+[a-zA-Z_][a-zA-Z0-9_]* return ID;
+[0-9]+                 return NUM;
+[=;]                   return yytext[0];
+[ \t\n]+               ;
+.                      return yytext[0];
+%%
+int yywrap(){ return 1; }
+// assign.y
+%{
+#include <stdio.h>
+int yylex(void); void yyerror(const char*s){ puts("Invalid assignment"); }
+%}
+%token ID NUM
+%%
+S: ID '=' NUM ';' { puts("Valid assignment"); };
+%%
+int main(){ return yyparse(); }
+Input1: a=10;   Output1: Valid assignment
+Input2: a=;     Output2: Invalid assignment
+Linux:   bison -d assign.y -o assign.tab.c && flex -o assign.lex.c assign.l && gcc assign.tab.c assign.lex.c -o assign -lfl && ./assign
+Windows: win_bison -d assign.y -o assign.tab.c && win_flex -o assign.lex.c assign.l && gcc assign.tab.c assign.lex.c -o assign.exe && assign.exe
+
+==================================================
+10) LEX+YACC - Infix to Postfix
+==================================================
+// infix.l
+%{
+#include <stdlib.h>
+#include <string.h>
+#include "infix.tab.h"
+char* mk(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
+%}
+%%
+[a-zA-Z0-9]+ { yylval.s=mk(yytext); return ID; }
+[+\-*/()]    return yytext[0];
+\n           return '\n';
+[ \t]+       ;
+%%
+int yywrap(){ return 1; }
+// infix.y
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
+char* join3(char*a,char*b,char*c){ int n=strlen(a)+strlen(b)+strlen(c)+3; char* r=(char*)malloc(n); snprintf(r,n,"%s %s%s",a,b,c); return r; }
+%}
+%union { char* s; }
+%token <s> ID
+%type <s> E
+%left '+' '-'
+%left '*' '/'
+%%
+S: E '\n' { printf("Postfix: %s\n",$1); };
+E: E'+'E {$$=join3($1,$3," +");} | E'-'E {$$=join3($1,$3," -");} | E'*'E {$$=join3($1,$3," *");} | E'/'E {$$=join3($1,$3," /");} | '('E')' {$$=$2;} | ID {$$=$1;};
+%%
+int main(){ return yyparse(); }
+Input: a+b*c
+Output: Postfix: a b c * +
+Linux:   bison -d infix.y -o infix.tab.c && flex -o infix.lex.c infix.l && gcc infix.tab.c infix.lex.c -o infix -lfl && ./infix
+Windows: win_bison -d infix.y -o infix.tab.c && win_flex -o infix.lex.c infix.l && gcc infix.tab.c infix.lex.c -o infix.exe && infix.exe
+
+==================================================
+11) LEX+YACC - Variable declaration with redeclaration
+==================================================
+// decl.l
+%{
+#include <stdlib.h>
+#include <string.h>
+#include "decl.tab.h"
+char* mk2(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
+%}
+%%
+"int"|"float"|"char"    return TYPE;
+[a-zA-Z_][a-zA-Z0-9_]*  { yylval.s=mk2(yytext); return ID; }
+[,;]                    return yytext[0];
+[ \t\n]+                ;
+.                       return yytext[0];
+%%
+int yywrap(){ return 1; }
+// decl.y
+%{
+#include <stdio.h>
+#include <string.h>
+char sym[100][40]; int n=0,err=0;
+int yylex(void); void yyerror(const char*s){ err=1; puts("Invalid declaration"); }
+int ex(char*x){ for(int i=0;i<n;i++) if(!strcmp(sym[i],x)) return 1; return 0; }
+void addv(char*x){ strcpy(sym[n++],x); }
+%}
+%union { char* s; }
+%token TYPE
+%token <s> ID
+%%
+S: TYPE L ';' { if(!err) puts("Valid declaration"); };
+L: L ',' ID { if(ex($3)){ printf("Redeclaration: %s\n",$3); err=1; } else addv($3); }
+ | ID       { if(ex($1)){ printf("Redeclaration: %s\n",$1); err=1; } else addv($1); };
+%%
+int main(){ return yyparse(); }
+Input: int a,b,a;
+Output: Redeclaration: a
+Linux:   bison -d decl.y -o decl.tab.c && flex -o decl.lex.c decl.l && gcc decl.tab.c decl.lex.c -o decl -lfl && ./decl
+Windows: win_bison -d decl.y -o decl.tab.c && win_flex -o decl.lex.c decl.l && gcc decl.tab.c decl.lex.c -o decl.exe && decl.exe
+
+==================================================
+12) LEX+YACC - Mini C syntax checker
+==================================================
+// mini.l
+%{ #include "mini.tab.h" %}
+%%
+"int"      return INT;
+"return"   return RETURN;
+[a-zA-Z_][a-zA-Z0-9_]* return ID;
+[0-9]+     return NUM;
+[(){};=+]  return yytext[0];
+[ \t\n]+   ;
+.          return yytext[0];
+%%
+int yywrap(){ return 1; }
+// mini.y
+%{
+#include <stdio.h>
+int yylex(void); void yyerror(const char*s){ puts("Syntax Error"); }
+%}
+%token INT RETURN ID NUM
+%%
+P: INT ID '(' ')' '{' ID '=' NUM '+' NUM ';' RETURN NUM ';' '}' { puts("Valid Mini C"); };
+%%
+int main(){ return yyparse(); }
+Input: int main(){ a=10+20; return 0; }
+Output: Valid Mini C
+Linux:   bison -d mini.y -o mini.tab.c && flex -o mini.lex.c mini.l && gcc mini.tab.c mini.lex.c -o mini -lfl && ./mini
+Windows: win_bison -d mini.y -o mini.tab.c && win_flex -o mini.lex.c mini.l && gcc mini.tab.c mini.lex.c -o mini.exe && mini.exe
+
+==================================================
+13) LEX+YACC - Parse tree construction (prefix form)
+==================================================
+// tree.l
+%{
+#include <stdlib.h>
+#include <string.h>
+#include "tree.tab.h"
+char* mk3(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
+%}
+%%
+[a-zA-Z0-9]+ { yylval.s=mk3(yytext); return ID; }
+[+*()]       return yytext[0];
+\n           return '\n';
+[ \t]+       ;
+%%
+int yywrap(){ return 1; }
+// tree.y
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
+char* mkNode(char op,char*l,char*r){ int n=strlen(l)+strlen(r)+10; char* x=(char*)malloc(n); snprintf(x,n,"(%c %s %s)",op,l,r); return x; }
+%}
+%union { char* s; }
+%token <s> ID
+%type <s> E
+%%
+S: E '\n' { printf("ParseTree: %s\n",$1); };
+E: E'+'E {$$=mkNode('+',$1,$3);} | E'*'E {$$=mkNode('*',$1,$3);} | '('E')' {$$=$2;} | ID {$$=$1;};
+%%
+int main(){ return yyparse(); }
+Input: a+b*c
+Output: ParseTree: (+ a (* b c))
+Linux:   bison -d tree.y -o tree.tab.c && flex -o tree.lex.c tree.l && gcc tree.tab.c tree.lex.c -o tree -lfl && ./tree
+Windows: win_bison -d tree.y -o tree.tab.c && win_flex -o tree.lex.c tree.l && gcc tree.tab.c tree.lex.c -o tree.exe && tree.exe
+
+==================================================
+14) LEX+YACC - LL(1) grammar format validator (basic)
+==================================================
+// ll1.l
+%{ #include "ll1.tab.h" %}
+%%
+[A-Z]  return NT;
+[a-z]  return T;
+"->"   return ARROW;
+"|"    return '|';
+\n     return '\n';
+[ \t]+ ;
+.      return yytext[0];
+%%
+int yywrap(){ return 1; }
+// ll1.y
+%{
+#include <stdio.h>
+int yylex(void); void yyerror(const char*s){ puts("Invalid grammar format"); }
+%}
+%token NT T ARROW
+%%
+S: R '\n' { puts("Grammar format valid"); };
+R: NT ARROW A;
+A: A '|' B | B;
+B: B T | T | NT;
+%%
+int main(){ return yyparse(); }
+Input: E->a|b
+Output: Grammar format valid
+Linux:   bison -d ll1.y -o ll1.tab.c && flex -o ll1.lex.c ll1.l && gcc ll1.tab.c ll1.lex.c -o ll1 -lfl && ./ll1
+Windows: win_bison -d ll1.y -o ll1.tab.c && win_flex -o ll1.lex.c ll1.l && gcc ll1.tab.c ll1.lex.c -o ll1.exe && ll1.exe
+
+==================================================
+15) LEX+YACC - FIRST/FOLLOW (basic single rule demo)
+==================================================
+// ff.l
+%{
+#include "ff.tab.h"
+%}
+%%
+[A-Z] { yylval.c=yytext[0]; return NT; }
+[a-z] { yylval.c=yytext[0]; return T; }
+"->"  return ARROW;
+\n    return '\n';
+[ \t]+;
+.     return yytext[0];
+%%
+int yywrap(){ return 1; }
+// ff.y
+%{
+#include <stdio.h>
+int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
+%}
+%union { char c; }
+%token <c> NT T
+%token ARROW
+%%
+S: NT ARROW T '\n' { printf("FIRST(%c)={%c}\nFOLLOW(%c)={$}\n",$1,$3,$1); };
+%%
+int main(){ return yyparse(); }
+Input: E->a
+Output: FIRST(E)={a}, FOLLOW(E)={$}
+Linux:   bison -d ff.y -o ff.tab.c && flex -o ff.lex.c ff.l && gcc ff.tab.c ff.lex.c -o ff -lfl && ./ff
+Windows: win_bison -d ff.y -o ff.tab.c && win_flex -o ff.lex.c ff.l && gcc ff.tab.c ff.lex.c -o ff.exe && ff.exe
+
+==================================================
+16) LEX+YACC - Three Address Code generation
+==================================================
+// tac.l
+%{
+#include <stdlib.h>
+#include <string.h>
+#include "tac.tab.h"
+char* mk4(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
+%}
+%%
+[a-zA-Z0-9]+ { yylval.s=mk4(yytext); return ID; }
+[+\-*/()]    return yytext[0];
+\n           return '\n';
+[ \t]+       ;
+%%
+int yywrap(){ return 1; }
+// tac.y
+%{
+#include <stdio.h>
+#include <stdlib.h>
+int yylex(void), tc=1; void yyerror(const char*s){ puts("Invalid"); }
+%}
+%union { char* s; }
+%token <s> ID
+%type <s> E
+%%
+S: E '\n' { printf("Final: %s\n",$1); };
+E: E'+'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s+%s\n",r,$1,$3); $$=r; }
+ | E'-'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s-%s\n",r,$1,$3); $$=r; }
+ | E'*'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s*%s\n",r,$1,$3); $$=r; }
+ | E'/'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s/%s\n",r,$1,$3); $$=r; }
+ | '('E')' { $$=$2; }
+ | ID { $$=$1; };
+%%
+int main(){ return yyparse(); }
+Input: a+b*c
+Output (short):
+t1=b*c
+t2=a+t1
+Final: t2
+Linux:   bison -d tac.y -o tac.tab.c && flex -o tac.lex.c tac.l && gcc tac.tab.c tac.lex.c -o tac -lfl && ./tac
+Windows: win_bison -d tac.y -o tac.tab.c && win_flex -o tac.lex.c tac.l && gcc tac.tab.c tac.lex.c -o tac.exe && tac.exe

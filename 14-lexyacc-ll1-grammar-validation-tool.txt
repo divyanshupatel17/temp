@@ -1,0 +1,47 @@
+LEX YACC 7: LL(1) Grammar Validation Tool (basic form check)
+
+Code (ll1.l):
+%{
+#include "y.tab.h"
+%}
+%%
+[A-Z]       { return NT; }
+[a-z]       { return T; }
+"->"        { return ARROW; }
+"|"         { return '|'; }
+"\n"        { return '\n'; }
+[ \t]+      ;
+.           { return yytext[0]; }
+%%
+int yywrap(){ return 1; }
+
+Code (ll1.y):
+%{
+#include <stdio.h>
+int yylex(void);
+void yyerror(char *s){ printf("Invalid grammar format\n"); }
+%}
+%token NT T ARROW
+%%
+S : R '\n' { printf("Grammar rule format valid (basic)\n"); };
+R : NT ARROW A ;
+A : A '|' B | B ;
+B : B T | T | NT ;
+%%
+int main(){ yyparse(); return 0; }
+
+Example input:
+E->t|t
+
+Linux:
+yacc -d ll1.y
+lex ll1.l
+gcc y.tab.c lex.yy.c -o ll1 -ll -ly
+./ll1
+
+Windows:
+win_bison -d ll1.y
+win_flex ll1.l
+gcc ll1.tab.c lex.yy.c -o ll1.exe
+ll1.exe
+
