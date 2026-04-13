@@ -1,532 +1,853 @@
-ALL COMPILER LAB CODES (Concise, student-style)
+# INDEX ==========================================================================================
+# 1. 01_ceaser.py   - Caesar Cipher [Easy]
+# 2. 02_mono.py     - Monoalphabetic Substitution Cipher [Easy]
+# 3. 03_playfair.py - Playfair Cipher [Med]
+# 4. 04_hill_.py    - Hill Cipher (2x2) [Med]
+# 5. 05_sdes.py     - Simplified DES (S-DES) [Hard] -
+# 6. 06_saes_.py    - Simplified AES (S-AES) [Hard] - 
+# 7. 07_rsa.py      - RSA Encryption/Decryption [Med]
+# 8. 08_el.py       - ElGamal Encryption/Decryption [Med]
+# 9. 09_rc4.py      - RC4 with Diffie-Hellman shared key [Hard] -
+# 10. 10_dh.py      - Diffie-Hellman + XOR block demo [Easy]
+# 11. 11_ecc.py     - ECC curve/point generation [Hard]
+# 12. 12_sha_.py    - SHA-1 Implementation [Hard] -
+# 13. 13_sig_rsa.py - RSA Digital Signature [Med]
+# 14. 14_sig_el.py  - ElGamal Digital Signature [Hard]
+# 15. 15_pki.py     - PKI demo (CA certificate + RSA) [Hard] -
 
-INDEX
-1. C - Token Separation
-2. C - Symbol Table (name,type,size,address)
-3. C - Shift-Reduce (LALR-style demo)
-4. C - Code Optimization Techniques
-5. LEX - Count lines/words/chars/keywords/comments
-6. LEX - Classify identifiers, int/real, operators, separators
-7. LEX - Remove comments + extra spaces/tabs
-8. LEX+YACC - Calculator with precedence
-9. LEX+YACC - Assignment syntax checker
-10. LEX+YACC - Infix to Postfix
-11. LEX+YACC - Variable declaration + redeclaration detection
-12. LEX+YACC - Mini C syntax checker
-13. LEX+YACC - Parse tree (prefix form)
-14. LEX+YACC - LL(1) grammar format validator
-15. LEX+YACC - FIRST/FOLLOW (basic demo)
-16. LEX+YACC - Three Address Code generation
+# 01_ceaser.py ==========================================================================================
+# Short I/O: Input(text="HELLO", key=3) -> Output(Encrypted="KHOOR", Decrypted="HELLO")
 
-==================================================
-1) C - Token Separation
-==================================================
-// token_sep.c
-#include <stdio.h>
-#include <ctype.h>
-int main(){
-  char s[500]; int i=0;
-  fgets(s,sizeof(s),stdin);
-  while(s[i]){
-    if(isspace((unsigned char)s[i])){ i++; continue; }
-    if(isalpha((unsigned char)s[i])||s[i]=='_'){
-      printf("ID: "); while(isalnum((unsigned char)s[i])||s[i]=='_') putchar(s[i++]); puts("");
-    }else if(isdigit((unsigned char)s[i])){
-      printf("NUM: "); while(isdigit((unsigned char)s[i])) putchar(s[i++]); puts("");
-    }else printf("SYM: %c\n", s[i++]);
-  } return 0;
+def ceaserEncrypt(text, key):
+    result = ""
+    for ch in text:
+        if ch.isalpha():
+            base = 'a' if ch.islower() else 'A'
+            en = chr((ord(ch) - ord(base) + key) % 26 + ord(base))
+            print(f"{ch} : {en}")
+            result += en
+        else:
+            print(f"{ch} : {ch}")
+            result += ch
+    return result
+
+def ceaserDecrypt(text, key):
+    return ceaserEncrypt(text, 26-key)
+
+text = input("Enter text to be Encrypted: ")
+key = int(input("Enter key value (0-25): "))
+
+encrypted = ceaserEncrypt(text, key)
+print(f"Encrypted: {encrypted}")
+
+decrypted = ceaserDecrypt(encrypted, key)
+print(f"Decrypted: {decrypted}")
+
+
+# 02_mono.py ==========================================================================================
+# Short I/O: Input(text="hello", key="qwertyuiopasdfghjklzxcvbnm") -> Output(Encrypted="itssg", Decrypted="hello")
+
+def encryption(text, key):
+    alpha = "abcdefghijklmnopqrstuvwxyz"
+    result = ""
+    for ch in text:
+        if ch.isalpha():
+            if ch.isupper():
+                result += key[alpha.index(ch.lower())].upper()
+            else:
+                result += key[alpha.index(ch)]
+        else:
+            result += ch
+    return result
+
+def decryption(text, key):
+    alpha = "abcdefghijklmnopqrstuvwxyz"
+    result = ""
+    for ch in text:
+        if ch.isalpha():
+            if ch.isupper():
+                result += alpha[key.index(ch.lower())].upper()
+            else:
+                result += alpha[key.index(ch)]
+        else:
+            result += ch
+    return result
+
+text = input("Enter the text to be encrypted: ")
+key = input("Enter the key:  ")
+
+encrypted = encryption(text, key)
+print(f" Encrypted: {encrypted}")
+
+decrypted = decryption(encrypted, key)
+print(f" Decrypted: {decrypted}")
+
+
+# 03_playfair.py ==========================================================================================
+# Short I/O: Input(text="HELLOX", key="MONARCHY") -> Output(Encrypted text), then Decrypted back to "HELLOX"
+
+matrix = [["" for _ in range(5)] for _ in range(5)]
+
+def generateMatrix(key):
+    used = [0]*26
+    used[ord('J') - ord('A')] = 1
+    k = 0
+    key = key.upper()
+    for ch in key:
+        if not used[ord(ch) - ord('A')]:
+            matrix[k//5][k%5] = ch
+            used[ord(ch) - ord('A')] = 1
+            k += 1
+    for i in range(26):
+        if not used[i]:
+            matrix[k//5][k%5] = chr(ord('A') + i)
+            k += 1
+            
+def find(ch):
+    if ch == 'J':
+        ch = 'I'
+    for i in range(5):
+        for j in range(5):
+            if matrix[i][j] == ch:
+                return i, j
+            
+def encrypt(text):
+    text = list(text)
+    for i in range(0, len(text), 2):
+        r1, c1 = find(text[i])
+        r2, c2 = find(text[i+1])
+        
+        if r1 == r2:
+            text[i] = matrix[r1][(c1+1)%5]
+            text[i+1] = matrix[r2][(c2+1)%5]
+        elif c1 == c2:
+            text[i] = matrix[(r1+1)%5][c1]
+            text[i+1] = matrix[(r2+1)%5][c2]
+        else:
+            text[i] = matrix[r1][c2]
+            text[i+1] = matrix[r2][c1]
+    return "".join(text)
+
+def decrypt(text):
+    text = list(text)
+    for i in range(0, len(text), 2):
+        r1, c1 = find(text[i])
+        r2, c2 = find(text[i+1])
+        
+        if r1 == r2:
+            text[i] = matrix[r1][(c1+4)%5]
+            text[i+1] = matrix[r2][(c2+4)%5]
+        elif c1 == c2:
+            text[i] = matrix[(r1+4)%5][c1]
+            text[i+1] = matrix[(r2+4)%5][c2]
+        else:
+            text[i] = matrix[r1][c2]
+            text[i+1] = matrix[r2][c1]
+    return "".join(text)
+
+def prepare(text):
+    text = text.replace(" ", "").upper()
+    result = ""
+
+    i = 0
+    while i < len(text):
+        if i+1 < len(text) and text[i] == text[i+1]:
+            result += text[i] + "X"
+            i += 1
+        else:
+            if i+1 < len(text):
+                result += text[i] + text[i+1]
+            else:
+                result += text[i] + "X"
+            i += 2
+
+    return result
+
+text = prepare(input("Enter the text to be encrypted: ").upper())
+key = input("Enter the key: ")
+
+
+
+generateMatrix(key)
+
+encrypted = encrypt(text)
+print(encrypted)
+
+decrypted = decrypt(encrypted)
+print(decrypted)
+
+
+# 04_hill_.py ==========================================================================================
+# Short I/O: Input(text="HELP", key matrix="3 3 2 5") -> Output(Ciphertext like "HIAT", Decrypted="HELP")
+
+def enc(t, k):
+    t = t.upper()
+    if len(t) % 2:
+        t += "X"
+    
+    r = ""
+    for i in range(0, len(t), 2):
+        a = ord(t[i]) - 65
+        b = ord(t[i+1]) - 65
+        
+        r += chr((k[0]*a + k[1]*b) % 26 + 65)
+        r += chr((k[2]*a + k[3]*b) % 26 + 65)
+    
+    return r
+
+def dec(t, k):
+    d = (k[0]*k[3] - k[1]*k[2]) % 26
+    
+    inv = None
+    for i in range(26):
+        if (d * i) % 26 == 1:
+            inv = i
+            break
+    
+    if inv is None:
+        print("No inverse")
+        return ""
+    
+    ik = [
+        k[3]*inv % 26, -k[1]*inv % 26,
+        -k[2]*inv % 26, k[0]*inv % 26
+    ]
+    
+    r = ""
+    for i in range(0, len(t), 2):
+        a = ord(t[i]) - 65
+        b = ord(t[i+1]) - 65
+        
+        r += chr((ik[0]*a + ik[1]*b) % 26 + 65)
+        r += chr((ik[2]*a + ik[3]*b) % 26 + 65)
+    
+    return r.rstrip("X")
+
+t = input("Enter the plain text: ").upper()
+k = list(map(int, input("Enter the key matrix: ").split()))
+
+e = enc(t, k)
+print("Ciphertext: ", e)
+print("Decrypted text: ", dec(e, k))
+
+# 05_sdes.py ==========================================================================================
+# Short I/O: Input(fixed key/plaintext in code) -> Output(S-DES Encrypted bits, S-DES Decrypted bits)
+
+P4     = [2,4,3,1]
+P8     = [6,3,7,4,8,5,10,9]
+P10    = [3,5,2,7,4,10,1,9,8,6]
+IP     = [2,6,3,1,4,8,5,7]
+IP_INV = [4,1,3,5,7,2,8,6]
+EP     = [4,1,2,3,2,3,4,1]
+
+S0     = [[1,0,3,2], [3,2,1,0], [0,2,1,3], [3,1,3,2]]
+
+S1     = [[0,1,2,3], [2,0,1,3], [3,0,1,0], [2,1,0,3]]
+
+def permute(bits, table):
+    return [bits[i-1] for i in table]
+
+def left_shift(bits, n):
+    return bits[n:] + bits[:n]
+
+def xor(a, b):
+    return [i ^ j for i, j in zip(a, b)]
+
+def sbox(inp, s):
+    row = inp[0]*2 + inp[3]
+    col = inp[1]*2 + inp[2]
+    val = s[row][col]
+    return [val//2, val%2]
+
+def fk(bits, key):
+    L, R = bits[:4], bits[4:]
+    temp = permute(R, EP)
+    temp = xor(temp, key)
+    left, right = sbox(temp[:4], S0), sbox(temp[4:], S1)
+    temp = permute(left + right, P4)
+    temp = xor(temp, L)
+    return temp + R
+
+def generate_keys(key):
+    key = permute(key, P10)
+    L, R = key[:5], key[5:]
+    L, R = left_shift(L,1), left_shift(R,1)
+    K1 = permute(L+R, P8)
+    L, R = left_shift(L,2), left_shift(R,2)
+    K2 = permute(L+R, P8)
+    return K1, K2
+
+def sdes_encrypt(pt, key):
+    K1, K2 = generate_keys(key)
+    bits = permute(pt, IP)
+    bits = fk(bits, K1)
+    bits = bits[4:] + bits[:4]
+    bits = fk(bits, K2)
+    return permute(bits, IP_INV)
+
+def sdes_decrypt(ct, key):
+    K1, K2 = generate_keys(key)
+    bits = permute(ct, IP)
+    bits = fk(bits, K2)
+    bits = bits[4:] + bits[:4]
+    bits = fk(bits, K1)
+    return permute(bits, IP_INV)
+
+key  = [1,0,1,0,0,0,0,0,1,0]
+pt   = [1,0,0,1,0,1,1,1]
+
+ct = sdes_encrypt(pt, key)
+dt = sdes_decrypt(ct, key)
+
+print("S-DES Encrypted:", ct)
+print("S-DES Decrypted:", dt)
+
+# 06_saes_.py ==========================================================================================
+# Short I/O: Input(plaintext="1234", key="5678" in hex) -> Output(Cipher=<4-hex>, Decrypted="1234")
+
+sbox = {
+'0':'9','1':'4','2':'A','3':'B',
+'4':'D','5':'1','6':'8','7':'5',
+'8':'6','9':'2','A':'0','B':'3',
+'C':'C','D':'E','E':'F','F':'7'
 }
-Input:  sum=a1+25*b;
-Output (short):
-ID: sum
-SYM: =
-ID: a1
-SYM: +
-NUM: 25
-SYM: *
-ID: b
-SYM: ;
-Linux:   gcc token_sep.c -o token_sep && ./token_sep
-Windows: gcc token_sep.c -o token_sep.exe && token_sep.exe
 
-==================================================
-2) C - Symbol Table
-==================================================
-// symtab.c
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-struct Sym{ char n[40], t[10]; int s, a; } st[200];
-int cnt=0, addr=1000;
-int sz(char *t){ if(!strcmp(t,"char"))return 1; if(!strcmp(t,"double"))return 8; return 4; }
-int kw(char *x){ char *k[]={"int","float","double","char","if","else","for","while","return","void","main"}; for(int i=0;i<11;i++) if(!strcmp(x,k[i])) return 1; return 0; }
-void add(char *n,char *t){ for(int i=0;i<cnt;i++) if(!strcmp(st[i].n,n)) return; strcpy(st[cnt].n,n); strcpy(st[cnt].t,t); st[cnt].s=sz(t); st[cnt].a=addr; addr+=st[cnt].s; cnt++; }
-int main(){
-  int L; char line[400], cur[10]=""; scanf("%d",&L); getchar();
-  for(int z=0;z<L;z++){ fgets(line,sizeof(line),stdin); int i=0;
-    while(line[i]){
-      if(isalpha((unsigned char)line[i])||line[i]=='_'){
-        char tok[50]; int j=0; while(isalnum((unsigned char)line[i])||line[i]=='_') tok[j++]=line[i++]; tok[j]='\0';
-        if(!strcmp(tok,"int")||!strcmp(tok,"float")||!strcmp(tok,"double")||!strcmp(tok,"char")) strcpy(cur,tok);
-        else if(cur[0] && !kw(tok)) add(tok,cur);
-      } else { if(line[i]==';') cur[0]='\0'; i++; }
-    }
-  }
-  puts("Name\tType\tSize\tAddress");
-  for(int i=0;i<cnt;i++) printf("%s\t%s\t%d\t%d\n",st[i].n,st[i].t,st[i].s,st[i].a);
-  return 0;
-}
-Input:
-5
-int a,b;
-float x;
-char c;
-double d;
-int sum;
-Output (short):
-Name Type Size Address
-a int 4 1000
-b int 4 1004
-x float 4 1008
-c char 1 1012
-d double 8 1013
-sum int 4 1021
-Linux:   gcc symtab.c -o symtab && ./symtab
-Windows: gcc symtab.c -o symtab.exe && symtab.exe
+inv_sbox = {v:k for k,v in sbox.items()}
 
-==================================================
-3) C - Shift-Reduce (LALR-style demo)
-==================================================
-// sr.c
-#include <stdio.h>
-int main(){
-  char in[100], st[100]=""; int i=0,t=-1;
-  scanf("%s",in); // use i for id
-  while(in[i]){
-    st[++t]=in[i++]; st[t+1]='\0';
-    if(st[t]=='i') st[t]='E';
-    if(t>=2 && st[t-2]=='E' && (st[t-1]=='+'||st[t-1]=='*') && st[t]=='E'){ t-=2; st[t]='E'; }
-    if(t>=2 && st[t-2]=='(' && st[t-1]=='E' && st[t]==')'){ t-=2; st[t]='E'; }
-  }
-  puts((t==0 && st[0]=='E')?"Accepted":"Rejected");
-  return 0;
-}
-Input:  i+i*i
-Output: Accepted
-Linux:   gcc sr.c -o sr && ./sr
-Windows: gcc sr.c -o sr.exe && sr.exe
+def xor(a,b):
+    return format(int(a,16)^int(b,16),'04X')
 
-==================================================
-4) C - Code Optimization Techniques
-==================================================
-// opt.c
-#include <stdio.h>
-int main(){
-  int a=5,b=10;
-  int normal=a+b;
-  int folded=5+10;
-  int strength=a*8;
-  printf("normal=%d\nfolded=%d\nstrength(a*8)=%d\n",normal,folded,strength);
-  return 0;
-}
-Input: No input
-Output: normal=15, folded=15, strength(a*8)=40
-Linux:   gcc opt.c -o opt && ./opt
-Windows: gcc opt.c -o opt.exe && opt.exe
+def sub_bytes(s):
+    return ''.join(sbox[i] for i in s)
 
-==================================================
-5) LEX - Count lines/words/chars/keywords/comments
-==================================================
-// count.l
-%{
-#include <stdio.h>
-int ln=0,wd=0,ch=0,kw=0,cm=0;
-%}
-%%
-"//".*                          { cm++; ch+=yyleng; }
-"/\\*"([^*]|\\*+[^*/])*"\\*/"  { cm++; ch+=yyleng; }
-"int"|"float"|"char"|"double"|"if"|"else"|"for"|"while"|"return" { kw++; wd++; ch+=yyleng; }
-[a-zA-Z_][a-zA-Z0-9_]*          { wd++; ch+=yyleng; }
-[0-9]+                          { wd++; ch+=yyleng; }
-\n                              { ln++; ch++; }
-[ \t]+                          { ch+=yyleng; }
-.                               { ch+=yyleng; }
-%%
-int yywrap(){ return 1; }
-int main(){ yylex(); printf("Lines=%d Words=%d Chars=%d Keywords=%d Comments=%d\n",ln,wd,ch,kw,cm); return 0; }
-Input:
-int a=10; // c1
-float b=2;
-Output (short): Lines=2 Words=5 Keywords=2 Comments=1
-Linux:   flex count.l && gcc lex.yy.c -o count -lfl && ./count < input.c
-Windows: win_flex count.l && gcc lex.yy.c -o count.exe && count.exe < input.c
+def inv_sub_bytes(s):
+    return ''.join(inv_sbox[i] for i in s)
 
-==================================================
-6) LEX - Classifier
-==================================================
-// classify.l
-%{
-#include <stdio.h>
-%}
-%%
-[a-zA-Z_][a-zA-Z0-9_]*  { printf("ID %s\n",yytext); }
-[0-9]+"."[0-9]+         { printf("REAL %s\n",yytext); }
-[0-9]+                  { printf("INT %s\n",yytext); }
-"=="|"!="|"<="|">="|"+"|"-"|"*"|"/"|"="|"<"|">" { printf("OP %s\n",yytext); }
-[(){};,]                { printf("SEP %s\n",yytext); }
-[ \t\n]+                ;
-.                       { printf("UNK %s\n",yytext); }
-%%
-int yywrap(){ return 1; }
-int main(){ yylex(); return 0; }
-Input:  x=10+20.5;
-Output: ID x, OP =, INT 10, OP +, REAL 20.5, SEP ;
-Linux:   flex classify.l && gcc lex.yy.c -o classify -lfl && ./classify < input.txt
-Windows: win_flex classify.l && gcc lex.yy.c -o classify.exe && classify.exe < input.txt
+def shift_rows(s):
+    return s[0] + s[1] + s[3] + s[2]
 
-==================================================
-7) LEX - Remove comments/spaces/tabs
-==================================================
-// clean.l
-%{
-#include <stdio.h>
-int sp=0;
-%}
-%%
-"//".*                          ;
-"/\\*"([^*]|\\*+[^*/])*"\\*/"  ;
-[ \t]+                          { if(!sp){ putchar(' '); sp=1; } }
-\n                              { putchar('\n'); sp=0; }
-[^ \t\n/]+                      { printf("%s",yytext); sp=0; }
-"/"                             { putchar('/'); sp=0; }
-%%
-int yywrap(){ return 1; }
-int main(){ yylex(); return 0; }
-Input:
-int   a = 10; // c
-/* b */ float    b = 2;
-Output:
-int a = 10;
-float b = 2;
-Linux:   flex clean.l && gcc lex.yy.c -o clean -lfl && ./clean < input.c
-Windows: win_flex clean.l && gcc lex.yy.c -o clean.exe && clean.exe < input.c
+def inv_shift_rows(s):
+    return s[0] + s[1] + s[3] + s[2]
 
-==================================================
-8) LEX+YACC - Calculator (precedence)
-==================================================
-// calc.l
-%{
-#include <stdlib.h>
-#include "calc.tab.h"
-%}
-%%
-[0-9]+ { yylval=atoi(yytext); return NUM; }
-[ \t]  ;
-\n      return '\n';
-.       return yytext[0];
-%%
-int yywrap(){ return 1; }
-// calc.y
-%{
-#include <stdio.h>
-int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
-%}
-%token NUM
-%left '+' '-'
-%left '*' '/'
-%%
-S: E '\n' { printf("Result=%d\n",$1); };
-E: E'+'E {$$=$1+$3;} | E'-'E {$$=$1-$3;} | E'*'E {$$=$1*$3;} | E'/'E {$$=$1/$3;} | '('E')' {$$=$2;} | NUM {$$=$1;};
-%%
-int main(){ return yyparse(); }
-Input: 10+2*5
-Output: Result=20
-Linux:   bison -d calc.y -o calc.tab.c && flex -o calc.lex.c calc.l && gcc calc.tab.c calc.lex.c -o calc -lfl && ./calc
-Windows: win_bison -d calc.y -o calc.tab.c && win_flex -o calc.lex.c calc.l && gcc calc.tab.c calc.lex.c -o calc.exe && calc.exe
+def gf_mult(a,b):
+    a=int(a,16)
+    b=int(b,16)
 
-==================================================
-9) LEX+YACC - Assignment syntax checker
-==================================================
-// assign.l
-%{ #include "assign.tab.h" %}
-%%
-[a-zA-Z_][a-zA-Z0-9_]* return ID;
-[0-9]+                 return NUM;
-[=;]                   return yytext[0];
-[ \t\n]+               ;
-.                      return yytext[0];
-%%
-int yywrap(){ return 1; }
-// assign.y
-%{
-#include <stdio.h>
-int yylex(void); void yyerror(const char*s){ puts("Invalid assignment"); }
-%}
-%token ID NUM
-%%
-S: ID '=' NUM ';' { puts("Valid assignment"); };
-%%
-int main(){ return yyparse(); }
-Input1: a=10;   Output1: Valid assignment
-Input2: a=;     Output2: Invalid assignment
-Linux:   bison -d assign.y -o assign.tab.c && flex -o assign.lex.c assign.l && gcc assign.tab.c assign.lex.c -o assign -lfl && ./assign
-Windows: win_bison -d assign.y -o assign.tab.c && win_flex -o assign.lex.c assign.l && gcc assign.tab.c assign.lex.c -o assign.exe && assign.exe
+    p=0
+    for _ in range(4):
+        if b&1:
+            p ^= a
+        carry = a & 0x8
+        a <<= 1
+        if carry:
+            a ^= 0x13
+        b >>= 1
 
-==================================================
-10) LEX+YACC - Infix to Postfix
-==================================================
-// infix.l
-%{
-#include <stdlib.h>
-#include <string.h>
-#include "infix.tab.h"
-char* mk(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
-%}
-%%
-[a-zA-Z0-9]+ { yylval.s=mk(yytext); return ID; }
-[+\-*/()]    return yytext[0];
-\n           return '\n';
-[ \t]+       ;
-%%
-int yywrap(){ return 1; }
-// infix.y
-%{
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
-char* join3(char*a,char*b,char*c){ int n=strlen(a)+strlen(b)+strlen(c)+3; char* r=(char*)malloc(n); snprintf(r,n,"%s %s%s",a,b,c); return r; }
-%}
-%union { char* s; }
-%token <s> ID
-%type <s> E
-%left '+' '-'
-%left '*' '/'
-%%
-S: E '\n' { printf("Postfix: %s\n",$1); };
-E: E'+'E {$$=join3($1,$3," +");} | E'-'E {$$=join3($1,$3," -");} | E'*'E {$$=join3($1,$3," *");} | E'/'E {$$=join3($1,$3," /");} | '('E')' {$$=$2;} | ID {$$=$1;};
-%%
-int main(){ return yyparse(); }
-Input: a+b*c
-Output: Postfix: a b c * +
-Linux:   bison -d infix.y -o infix.tab.c && flex -o infix.lex.c infix.l && gcc infix.tab.c infix.lex.c -o infix -lfl && ./infix
-Windows: win_bison -d infix.y -o infix.tab.c && win_flex -o infix.lex.c infix.l && gcc infix.tab.c infix.lex.c -o infix.exe && infix.exe
+    return format(p & 0xF,'X')
 
-==================================================
-11) LEX+YACC - Variable declaration with redeclaration
-==================================================
-// decl.l
-%{
-#include <stdlib.h>
-#include <string.h>
-#include "decl.tab.h"
-char* mk2(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
-%}
-%%
-"int"|"float"|"char"    return TYPE;
-[a-zA-Z_][a-zA-Z0-9_]*  { yylval.s=mk2(yytext); return ID; }
-[,;]                    return yytext[0];
-[ \t\n]+                ;
-.                       return yytext[0];
-%%
-int yywrap(){ return 1; }
-// decl.y
-%{
-#include <stdio.h>
-#include <string.h>
-char sym[100][40]; int n=0,err=0;
-int yylex(void); void yyerror(const char*s){ err=1; puts("Invalid declaration"); }
-int ex(char*x){ for(int i=0;i<n;i++) if(!strcmp(sym[i],x)) return 1; return 0; }
-void addv(char*x){ strcpy(sym[n++],x); }
-%}
-%union { char* s; }
-%token TYPE
-%token <s> ID
-%%
-S: TYPE L ';' { if(!err) puts("Valid declaration"); };
-L: L ',' ID { if(ex($3)){ printf("Redeclaration: %s\n",$3); err=1; } else addv($3); }
- | ID       { if(ex($1)){ printf("Redeclaration: %s\n",$1); err=1; } else addv($1); };
-%%
-int main(){ return yyparse(); }
-Input: int a,b,a;
-Output: Redeclaration: a
-Linux:   bison -d decl.y -o decl.tab.c && flex -o decl.lex.c decl.l && gcc decl.tab.c decl.lex.c -o decl -lfl && ./decl
-Windows: win_bison -d decl.y -o decl.tab.c && win_flex -o decl.lex.c decl.l && gcc decl.tab.c decl.lex.c -o decl.exe && decl.exe
+def mix_columns(s):
+    s0,s1,s2,s3 = s
+    return (
+        format(int(s0,16)^int(gf_mult('4',s2),16),'X') +
+        format(int(s1,16)^int(gf_mult('4',s3),16),'X') +
+        format(int(gf_mult('4',s0),16)^int(s2,16),'X') +
+        format(int(gf_mult('4',s1),16)^int(s3,16),'X')
+    )
 
-==================================================
-12) LEX+YACC - Mini C syntax checker
-==================================================
-// mini.l
-%{ #include "mini.tab.h" %}
-%%
-"int"      return INT;
-"return"   return RETURN;
-[a-zA-Z_][a-zA-Z0-9_]* return ID;
-[0-9]+     return NUM;
-[(){};=+]  return yytext[0];
-[ \t\n]+   ;
-.          return yytext[0];
-%%
-int yywrap(){ return 1; }
-// mini.y
-%{
-#include <stdio.h>
-int yylex(void); void yyerror(const char*s){ puts("Syntax Error"); }
-%}
-%token INT RETURN ID NUM
-%%
-P: INT ID '(' ')' '{' ID '=' NUM '+' NUM ';' RETURN NUM ';' '}' { puts("Valid Mini C"); };
-%%
-int main(){ return yyparse(); }
-Input: int main(){ a=10+20; return 0; }
-Output: Valid Mini C
-Linux:   bison -d mini.y -o mini.tab.c && flex -o mini.lex.c mini.l && gcc mini.tab.c mini.lex.c -o mini -lfl && ./mini
-Windows: win_bison -d mini.y -o mini.tab.c && win_flex -o mini.lex.c mini.l && gcc mini.tab.c mini.lex.c -o mini.exe && mini.exe
+def inv_mix_columns(s):
+    s0,s1,s2,s3 = s
+    return (
+        format(int(gf_mult('9',s0),16)^int(gf_mult('2',s2),16),'X') +
+        format(int(gf_mult('9',s1),16)^int(gf_mult('2',s3),16),'X') +
+        format(int(gf_mult('2',s0),16)^int(gf_mult('9',s2),16),'X') +
+        format(int(gf_mult('2',s1),16)^int(gf_mult('9',s3),16),'X')
+    )
 
-==================================================
-13) LEX+YACC - Parse tree construction (prefix form)
-==================================================
-// tree.l
-%{
-#include <stdlib.h>
-#include <string.h>
-#include "tree.tab.h"
-char* mk3(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
-%}
-%%
-[a-zA-Z0-9]+ { yylval.s=mk3(yytext); return ID; }
-[+*()]       return yytext[0];
-\n           return '\n';
-[ \t]+       ;
-%%
-int yywrap(){ return 1; }
-// tree.y
-%{
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
-char* mkNode(char op,char*l,char*r){ int n=strlen(l)+strlen(r)+10; char* x=(char*)malloc(n); snprintf(x,n,"(%c %s %s)",op,l,r); return x; }
-%}
-%union { char* s; }
-%token <s> ID
-%type <s> E
-%%
-S: E '\n' { printf("ParseTree: %s\n",$1); };
-E: E'+'E {$$=mkNode('+',$1,$3);} | E'*'E {$$=mkNode('*',$1,$3);} | '('E')' {$$=$2;} | ID {$$=$1;};
-%%
-int main(){ return yyparse(); }
-Input: a+b*c
-Output: ParseTree: (+ a (* b c))
-Linux:   bison -d tree.y -o tree.tab.c && flex -o tree.lex.c tree.l && gcc tree.tab.c tree.lex.c -o tree -lfl && ./tree
-Windows: win_bison -d tree.y -o tree.tab.c && win_flex -o tree.lex.c tree.l && gcc tree.tab.c tree.lex.c -o tree.exe && tree.exe
+def key_expand(key):
 
-==================================================
-14) LEX+YACC - LL(1) grammar format validator (basic)
-==================================================
-// ll1.l
-%{ #include "ll1.tab.h" %}
-%%
-[A-Z]  return NT;
-[a-z]  return T;
-"->"   return ARROW;
-"|"    return '|';
-\n     return '\n';
-[ \t]+ ;
-.      return yytext[0];
-%%
-int yywrap(){ return 1; }
-// ll1.y
-%{
-#include <stdio.h>
-int yylex(void); void yyerror(const char*s){ puts("Invalid grammar format"); }
-%}
-%token NT T ARROW
-%%
-S: R '\n' { puts("Grammar format valid"); };
-R: NT ARROW A;
-A: A '|' B | B;
-B: B T | T | NT;
-%%
-int main(){ return yyparse(); }
-Input: E->a|b
-Output: Grammar format valid
-Linux:   bison -d ll1.y -o ll1.tab.c && flex -o ll1.lex.c ll1.l && gcc ll1.tab.c ll1.lex.c -o ll1 -lfl && ./ll1
-Windows: win_bison -d ll1.y -o ll1.tab.c && win_flex -o ll1.lex.c ll1.l && gcc ll1.tab.c ll1.lex.c -o ll1.exe && ll1.exe
+    k0 = key
+    k1 = xor(key,'1111')
+    k2 = xor(key,'AAAA')
 
-==================================================
-15) LEX+YACC - FIRST/FOLLOW (basic single rule demo)
-==================================================
-// ff.l
-%{
-#include "ff.tab.h"
-%}
-%%
-[A-Z] { yylval.c=yytext[0]; return NT; }
-[a-z] { yylval.c=yytext[0]; return T; }
-"->"  return ARROW;
-\n    return '\n';
-[ \t]+;
-.     return yytext[0];
-%%
-int yywrap(){ return 1; }
-// ff.y
-%{
-#include <stdio.h>
-int yylex(void); void yyerror(const char*s){ puts("Invalid"); }
-%}
-%union { char c; }
-%token <c> NT T
-%token ARROW
-%%
-S: NT ARROW T '\n' { printf("FIRST(%c)={%c}\nFOLLOW(%c)={$}\n",$1,$3,$1); };
-%%
-int main(){ return yyparse(); }
-Input: E->a
-Output: FIRST(E)={a}, FOLLOW(E)={$}
-Linux:   bison -d ff.y -o ff.tab.c && flex -o ff.lex.c ff.l && gcc ff.tab.c ff.lex.c -o ff -lfl && ./ff
-Windows: win_bison -d ff.y -o ff.tab.c && win_flex -o ff.lex.c ff.l && gcc ff.tab.c ff.lex.c -o ff.exe && ff.exe
+    return k0,k1,k2
 
-==================================================
-16) LEX+YACC - Three Address Code generation
-==================================================
-// tac.l
-%{
-#include <stdlib.h>
-#include <string.h>
-#include "tac.tab.h"
-char* mk4(char*s){ char* p=(char*)malloc(strlen(s)+1); strcpy(p,s); return p; }
-%}
-%%
-[a-zA-Z0-9]+ { yylval.s=mk4(yytext); return ID; }
-[+\-*/()]    return yytext[0];
-\n           return '\n';
-[ \t]+       ;
-%%
-int yywrap(){ return 1; }
-// tac.y
-%{
-#include <stdio.h>
-#include <stdlib.h>
-int yylex(void), tc=1; void yyerror(const char*s){ puts("Invalid"); }
-%}
-%union { char* s; }
-%token <s> ID
-%type <s> E
-%%
-S: E '\n' { printf("Final: %s\n",$1); };
-E: E'+'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s+%s\n",r,$1,$3); $$=r; }
- | E'-'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s-%s\n",r,$1,$3); $$=r; }
- | E'*'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s*%s\n",r,$1,$3); $$=r; }
- | E'/'E { char* r=(char*)malloc(12); sprintf(r,"t%d",tc++); printf("%s=%s/%s\n",r,$1,$3); $$=r; }
- | '('E')' { $$=$2; }
- | ID { $$=$1; };
-%%
-int main(){ return yyparse(); }
-Input: a+b*c
-Output (short):
-t1=b*c
-t2=a+t1
-Final: t2
-Linux:   bison -d tac.y -o tac.tab.c && flex -o tac.lex.c tac.l && gcc tac.tab.c tac.lex.c -o tac -lfl && ./tac
-Windows: win_bison -d tac.y -o tac.tab.c && win_flex -o tac.lex.c tac.l && gcc tac.tab.c tac.lex.c -o tac.exe && tac.exe
+def encrypt(pt,key):
+
+    k0,k1,k2 = key_expand(key)
+
+    state = xor(pt,k0)
+
+    state = sub_bytes(state)
+    state = shift_rows(state)
+    state = mix_columns(state)
+    state = xor(state,k1)
+
+    state = sub_bytes(state)
+    state = shift_rows(state)
+    
+    state = xor(state,k2)
+
+    return state
+
+def decrypt(ct,key):
+
+    k0,k1,k2 = key_expand(key)
+
+    state = xor(ct,k2)
+
+    state = inv_shift_rows(state)
+    state = inv_sub_bytes(state)
+
+    state = xor(state,k1)
+    state = inv_mix_columns(state)
+    state = inv_shift_rows(state)
+    state = inv_sub_bytes(state)
+
+    state = xor(state,k0)
+
+    return state
+
+pt = input("Enter hex plaintext (4 chars): ").upper()
+key = input("Enter hex key (4 chars): ").upper()
+
+ct = encrypt(pt,key)
+
+print("Cipher:",ct)
+print("Decrypted:",decrypt(ct,key))
+
+# 07_rsa.py ==========================================================================================
+# Short I/O: Input(p=17, q=11, msg="HI") -> Output(Encrypted integer list, Decrypted="HI")
+
+import math
+
+def generate_keys(p, q):
+    n = p*q
+    phi = (p-1)*(q-1)
+    
+    for e in range(3, phi, 2):
+        if math.gcd(e, phi) == 1:
+            break
+        
+    d = pow(e, -1, phi)
+    
+    return e, d, n
+    
+def encrypt_text(msg, e, n):
+    return [pow(ord(c), e, n) for c in msg]
+
+def decrypt_text(msg, d, n):
+    return "".join(chr(pow(c, d, n)) for c in msg)
+
+p = int(input("Enter prime p: "))
+q = int(input("Enter prime q: "))
+msg = input("Enter message: ")
+
+e, d, n = generate_keys(p, q)
+
+encrypted = encrypt_text(msg, e, n)
+decrypted = decrypt_text(encrypted, d, n)
+
+print(encrypted)
+print(decrypted)
+
+# 08_el.py ==========================================================================================
+# Short I/O: Input(p, g, x, m, k) -> Output(Ciphertext=(c1,c2), Decrypted message=m)
+
+def mod_inverse(a, p):
+    return pow(a, p-2, p)
+
+def encrypt(p, g, y, m, k):
+    c1 = pow(g, k, p)
+    c2 = (m * pow(y, k, p)) % p
+    return c1, c2
+
+def decrypt(p, x, c1, c2):
+    s = pow(c1, x, p)
+    s_inv = mod_inverse(s, p)
+    m = (c2 * s_inv) % p
+    return m
+
+def encrypt_string(text, p, g, y, k):
+    ciphertext = []
+    
+    for ch in text:
+        m = ord(ch)
+        c1 = pow(g, k, p)
+        c2 = (m * pow(y, k, p)) % p
+        ciphertext.append((c1, c2))
+        
+    return ciphertext
+
+def decrypt_string(ciphertext, p, x):
+    result = ""
+    
+    for c1, c2 in ciphertext:
+        s = pow(c1, x, p)
+        s_inv = mod_inverse(s, p)
+        m = (c2 * s_inv) % p
+        result += chr(m)
+        
+    return result
+
+p = int(input("Enter prime p: "))
+g = int(input("Enter generator g: "))
+x = int(input("Enter private key x: "))
+m = int(input("Enter message m: "))
+# m = input("Enter message m: ")
+k = int(input("Enter random k: "))
+
+y = pow(g, x, p)
+
+c1, c2 = encrypt(p, g, y, m, k)
+print("Ciphertext:", c1, c2)
+
+decrypted_message = decrypt(p, x, c1, c2)
+print("Decrypted message:", decrypted_message)
+
+# cipher = encrypt_string(m, p, g, y, k)
+# print("Ciphertext:", cipher)
+
+# decrypted = decrypt_string(cipher, p, x)
+# print("Decrypted:", decrypted)
+
+
+# 09_rc4.py ==========================================================================================
+# Short I/O: Input(p, g, a, b, message) -> Output(Ciphertext hex, Decrypted text=original message)
+
+def diffie_hellman(p, g, a, b):
+    B = pow(g, b, p)
+    shared = pow(B, a, p)
+    return str(shared)
+
+def rc4(key, text):
+    S = list(range(256))
+    j = 0
+    key_bytes = [ord(c) for c in key]
+
+    for i in range(256):
+        j = (j + S[i] + key_bytes[i % len(key_bytes)]) % 256
+        S[i], S[j] = S[j], S[i]
+
+    i = 0
+    j = 0
+    result = ""
+
+    for char in text:
+        i = (i + 1) % 256
+        j = (j + S[i]) % 256
+        S[i], S[j] = S[j], S[i]
+
+        k = S[(S[i] + S[j]) % 256]
+
+        result += chr(ord(char) ^ k)
+
+    return result
+
+p = int(input("Enter prime p: "))
+g = int(input("Enter generator g: "))
+a = int(input("Enter private key of user A: "))
+b = int(input("Enter private key of user B: "))
+plaintext = input("Enter message: ")
+
+key = diffie_hellman(p, g, a, b)
+
+cipher = rc4(key, plaintext)
+print("Ciphertext (hex):", cipher.encode().hex())
+
+decrypted = rc4(key, cipher)
+print("Decrypted text:", decrypted)
+
+
+# 10_dh.py ==========================================================================================
+# Short I/O: Input(p, g, a, b, message) -> Output(Ciphertext hex, Decrypted text=original message)
+
+# Diffie-Hellman + XOR Encryption
+
+def dh(p, g, a, b):
+    A = pow(g, a, p)      # Alice public
+    B = pow(g, b, p)      # Bob public
+    s1 = pow(B, a, p)     # Alice shared
+    s2 = pow(A, b, p)     # Bob shared
+    return s1, s2
+
+def xor(text, key):
+    return ''.join(chr(ord(c) ^ key) for c in text)
+
+# Input
+p = int(input("Enter p: "))
+g = int(input("Enter g: "))
+a = int(input("Enter private key A: "))
+b = int(input("Enter private key B: "))
+msg = input("Enter message: ")
+
+# Key generation
+s1, s2 = dh(p, g, a, b)
+print("Shared key A:", s1)
+print("Shared key B:", s2)
+
+key = s1 % 256
+
+# Encryption
+c = xor(msg, key)
+print("Cipher (hex):", c.encode().hex())
+
+# Decryption
+d = xor(c, key)
+print("Decrypted:", d)
+
+# 11_ecc.py ==========================================================================================
+# Short I/O: Input(no user input; p=457 preset) -> Output(3 curves and first 10 points for each)
+# Elliptic Curve Point Generator
+
+import random
+
+def is_valid_curve(a, b, p):
+    return (4 * a**3 + 27 * b**2) % p != 0
+
+# Generate n valid curves
+def generate_curves(p, n):
+    curves = set()
+
+    while len(curves) < n:
+        a = random.randrange(p)
+        b = random.randrange(p)
+
+        if is_valid_curve(a, b, p):
+            curves.add((a, b))
+
+    return list(curves)
+
+# Find points on curve
+def find_points(a, b, p):
+    points = []
+
+    for x in range(p):
+        rhs = (x**3 + a*x + b) % p
+
+        for y in range(p):
+            if (y*y) % p == rhs:
+                points.append((x, y))
+
+    return points
+
+p = 457
+
+curves = generate_curves(p, 3)
+
+for a, b in curves:
+    print(f"\nCurve: y^2 = x^3 + {a}x + {b} (mod {p})")
+    pts = find_points(a, b, p)
+    print("First 10 Points:", pts[:10])
+
+# 12_sha_.py ==========================================================================================
+# Short I/O: Input(message="hello") -> Output(SHA-1="aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")
+
+def left_rotate(n, b):
+    return ((n << b) | (n >> (32 - b))) & 0xffffffff
+
+
+def sha1(message):
+    message = bytearray(message, 'utf-8')
+    original_length = len(message) * 8
+    message.append(0x80)
+
+    while (len(message) * 8) % 512 != 448:
+        message.append(0)
+
+    message += original_length.to_bytes(8, 'big')
+
+    h0 = 0x67452301
+    h1 = 0xEFCDAB89
+    h2 = 0x98BADCFE
+    h3 = 0x10325476
+    h4 = 0xC3D2E1F0
+
+    for i in range(0, len(message), 64):
+        block = message[i:i+64]
+        w = []
+
+        for j in range(16):
+            w.append(int.from_bytes(block[j*4:(j*4)+4], 'big'))
+
+        for j in range(16, 80):
+            val = w[j-3] ^ w[j-8] ^ w[j-14] ^ w[j-16]
+            w.append(left_rotate(val, 1))
+
+        a, b, c, d, e = h0, h1, h2, h3, h4
+
+        for j in range(80):
+
+            if j < 20:
+                f = (b & c) | ((~b) & d)
+                k = 0x5A827999
+
+            elif j < 40:
+                f = b ^ c ^ d
+                k = 0x6ED9EBA1
+
+            elif j < 60:
+                f = (b & c) | (b & d) | (c & d)
+                k = 0x8F1BBCDC
+
+            else:
+                f = b ^ c ^ d
+                k = 0xCA62C1D6
+
+            temp = (left_rotate(a,5) + f + e + k + w[j]) & 0xffffffff
+
+            e = d
+            d = c
+            c = left_rotate(b,30)
+            b = a
+            a = temp
+
+        h0 = (h0 + a) & 0xffffffff
+        h1 = (h1 + b) & 0xffffffff
+        h2 = (h2 + c) & 0xffffffff
+        h3 = (h3 + d) & 0xffffffff
+        h4 = (h4 + e) & 0xffffffff
+
+    return "%08x%08x%08x%08x%08x" % (h0, h1, h2, h3, h4)
+
+message = input("Enter message: ")
+
+hash_value = sha1(message)
+
+print("SHA-1 Hash:", hash_value)
+
+# 13_sig_rsa.py ==========================================================================================
+# Short I/O: Input(p, q, message) -> Output(Signature value, Verification=True)
+
+import math
+
+def generate_keys(p, q):
+    n = p*q
+    phi = (p-1)*(q-1)
+    
+    for e in range(3, phi, 2):
+        if math.gcd(e, phi) == 1:
+            break
+        
+    d = pow(e, -1, phi)
+    
+    return e, d, n
+    
+p = int(input("Enter prime p: "))
+q = int(input("Enter prime q: "))
+message = input("Enter message: ")
+
+e, d, n = generate_keys(p, q)
+
+m = sum(ord(c) for c in message)
+
+signature = pow(m, d, n)
+
+verified = pow(signature, e, n)
+
+print("\nPublic Key (n, e):", (n, e))
+print("Private Key d:", d)
+
+print("Message numeric value:", m)
+print("Signature:", signature)
+
+print("Verification:", verified == m % n)
+
+
+# 14_sig_el.py ==========================================================================================
+# Short I/O: Input(p, g, x, message, k) -> Output(Signature(r,s), Verification=True)
+import hashlib
+import math
+
+p = int(input("Enter prime p: "))
+g = int(input("Enter generator g: "))
+x = int(input("Enter private key x: "))
+m = input("Enter message: ")
+
+# choose valid k
+while True:
+    k = int(input("Enter random k: "))
+    if math.gcd(k, p-1) == 1:
+        break
+    print("k must be coprime with (p-1)")
+
+# public key
+y = pow(g, x, p)
+
+# hash: Message → encode → SHA1 → hex → int → mod → h 
+h = int(hashlib.sha1(m.encode()).hexdigest(), 16) % (p-1)
+
+# signature
+r = pow(g, k, p)
+k_inv = pow(k, -1, p-1)
+s = (k_inv * (h - x*r)) % (p-1)
+
+# verification
+left = pow(g, h, p)
+right = (pow(y, r, p) * pow(r, s, p)) % p
+
+print("\nPublic Key y:", y)
+print("Signature (r, s):", (r, s))
+print("Verification:", left == right)
+
+# 15_pki.py ==========================================================================================
+# Short I/O: Input(p1, q1, p2, q2, message) -> Output(Certificate Valid, Encrypted list, Decrypted original message)
+
+import hashlib
+import math
+
+def generate_keys(p, q):
+    n = p*q
+    phi = (p-1)*(q-1)
+
+    for e in range(3, phi, 2):
+        if math.gcd(e, phi) == 1:
+            break
+
+    d = pow(e,-1,phi)
+
+    return (e,n), (d,n)
+
+def encrypt(msg,pub):
+    e,n = pub
+    return [pow(ord(c),e,n) for c in msg]
+
+def decrypt(cipher,priv):
+    d,n = priv
+    return "".join(chr(pow(c,d,n)) for c in cipher)
+
+def hash_val(data):
+    return int(hashlib.sha1(data.encode()).hexdigest(),16)
+
+def sign(data,priv):
+    d,n = priv
+    return pow(hash_val(data)%n,d,n)
+
+def verify(data,sig,pub):
+    e,n = pub
+    return pow(sig,e,n) == hash_val(data)%n
+
+p1 = int(input("Enter prime p1: "))
+q1 = int(input("Enter prime q1: "))
+p2 = int(input("Enter prime p2: "))
+q2 = int(input("Enter prime q2: "))
+
+ca_pub,ca_priv = generate_keys(p1, q1)
+user_pub,user_priv = generate_keys(p2, q2)
+
+message = input("Enter message: ")
+
+certificate = sign(str(user_pub),ca_priv)
+
+valid = verify(str(user_pub),certificate,ca_pub)
+
+cipher = encrypt(message,user_pub)
+plain = decrypt(cipher,user_priv)
+
+print("\nCA Public Key:",ca_pub)
+print("User Public Key:",user_pub)
+
+print("Certificate:",certificate)
+print("Certificate Valid:",valid)
+
+print("Encrypted:",cipher)
+print("Decrypted:",plain)
